@@ -481,10 +481,8 @@ async function initAR() {
     xrSession.requestAnimationFrame(onXRFrame);
 
     // Tap to place
-    document.getElementById('ar-ui').addEventListener('click', (e)=>{
-      if (!farmPlaced && !e.target.closest('#controls') && !e.target.closest('#evt-popup')) {
-        placeFarm();
-      }
+    document.getElementById('ar-canvas').addEventListener('click', ()=>{
+      if (!farmPlaced) placeFarm();
     });
 
   } catch(e) {
