@@ -350,6 +350,11 @@
     <div class="env-row"><span>☀️</span><span class="env-num" id="e-light">ON</span><div class="env-bw"><div class="env-bf ef-l" id="ef-light" style="width:75%"></div></div></div>
   </div>
 
+  <!-- Penalty countdown -->
+  <div id="penalty-bar" style="position:absolute;top:58px;left:50%;transform:translateX(-50%);display:none;pointer-events:none;z-index:12;background:rgba(180,0,0,.82);border:1px solid #ff4444;border-radius:10px;padding:.3rem .9rem;text-align:center;white-space:nowrap;">
+    <span id="penalty-icon">🐛</span> <span id="penalty-msg">제거하지 않으면</span> <span id="penalty-cd" style="font-weight:900;color:#ffd700;">15</span>초 후 <span id="penalty-amt" style="font-weight:900;">-200점</span>
+  </div>
+
   <!-- Harvest prompt -->
   <div id="harvest-prompt" style="position:absolute;bottom:210px;left:50%;transform:translateX(-50%);display:none;pointer-events:all;z-index:12;text-align:center;">
     <button onclick="doHarvest()" style="background:linear-gradient(135deg,#ffd700,#ff9800);border:none;border-radius:14px;padding:.7rem 1.6rem;font-size:1rem;font-weight:700;color:#000;cursor:pointer;font-family:inherit;box-shadow:0 0 20px rgba(255,215,0,.5);animation:pulse-harvest .8s ease-in-out infinite;">
@@ -450,6 +455,7 @@ let G = {
   waterCnt:0, pestCnt:0, pestTotal:0, hasPest:false, harvestCnt:0,
   running:false,
   timerInt:null, growInt:null, evtInt:null,
+  pestPenaltyInt:null, heatPenaltyInt:null,
 };
 
 // ═══════════════════════════════
@@ -920,6 +926,7 @@ function doPest() {
     document.getElementById('pest-bdg').style.display='none';
     document.getElementById('btn-pest').classList.remove('alert-btn');
     G.score+=160; updateHUD(); updateFarmAR();
+    clearPenaltyTimer('pest');
     showEvt('🌿','병충해 제거!','작물을 지켰어요! +160점',true,'감사합니다');
   } else { aiSay('✅ 지금은 병충해가 없어요.'); }
 }
@@ -941,6 +948,11 @@ function setTemp(v,silent){
   document.getElementById('sv-temp').textContent=v+'°C';
   document.getElementById('ef-temp').style.width=((v-10)/30*100)+'%';
   if(!silent){G.score+=2;updateHUD();}
+  // 폭염 타이머 중 온도를 적정 범위로 낮추면 해제
+  if(G.heatPenaltyInt && G.temp<=CROPS[G.crop].optT[1]){
+    clearPenaltyTimer('heat');
+    aiSay('✅ 폭염 대응 완료! 작물을 지켰어요.');
+  }
 }
 function setHumi(v,silent){
   G.humi=+v;
@@ -959,15 +971,75 @@ function randomEvent(){
     document.getElementById('pest-bdg').style.display='block';
     document.getElementById('btn-pest').classList.add('alert-btn');
     showEvt('🐛','병충해 발생!','해충이 나타났어요!\n빠르게 제거하세요.',false,'확인');
+    startPenaltyCountdown('pest', 15, 200);
   } else if(r<0.65){
     G.temp=Math.min(40,G.temp+7);
     document.getElementById('sl-temp').value=G.temp; setTemp(G.temp,true);
     showEvt('🌡️','폭염 발생!','온도가 급상승했어요!\n슬라이더로 낮춰주세요.',false,'확인');
+    startPenaltyCountdown('heat', 15, 150);
   } else {
     G.score+=120; updateHUD();
     showEvt('☀️','화창한 날씨!','햇빛이 넘쳐요! +120점',true,'좋아요');
   }
 }
+function startPenaltyCountdown(type, seconds, penalty) {
+  // 기존 타이머 제거
+  const key = type === 'pest' ? 'pestPenaltyInt' : 'heatPenaltyInt';
+  if (G[key]) { clearInterval(G[key]); G[key] = null; }
+
+  let cd = seconds;
+  const bar = document.getElementById('penalty-bar');
+  document.getElementById('penalty-icon').textContent = type === 'pest' ? '🐛' : '🌡️';
+  document.getElementById('penalty-msg').textContent  = type === 'pest' ? '병충해 미제거 시' : '온도 미조절 시';
+  document.getElementById('penalty-amt').textContent  = `-${penalty}점`;
+  document.getElementById('penalty-cd').textContent   = cd;
+  bar.style.display = 'block';
+
+  G[key] = setInterval(() => {
+    if (!G.running) { clearInterval(G[key]); G[key]=null; bar.style.display='none'; return; }
+
+    // 해제 조건 확인
+    const resolved = type === 'pest'
+      ? !G.hasPest
+      : G.temp <= CROPS[G.crop].optT[1];
+
+    if (resolved) {
+      clearInterval(G[key]); G[key]=null; bar.style.display='none'; return;
+    }
+
+    cd--;
+    document.getElementById('penalty-cd').textContent = cd;
+
+    if (cd <= 0) {
+      clearInterval(G[key]); G[key]=null; bar.style.display='none';
+      G.score = Math.max(0, G.score - penalty);
+      updateHUD();
+      const msg = type === 'pest'
+        ? `병충해 피해! 작물이 손상됐어요. -${penalty}점`
+        : `폭염 피해! 작물이 타버렸어요. -${penalty}점`;
+      showEvt(type==='pest'?'💀':'🔥',
+        type==='pest'?'병충해 피해!':'폭염 피해!',
+        msg, false, '확인');
+      aiSay(`⚠️ ${type==='pest'?'병충해':'폭염'} 피해 -${penalty}점!`);
+      // 병충해는 시간 초과 후 자동 소멸
+      if (type === 'pest') {
+        G.hasPest = false;
+        document.getElementById('pest-bdg').style.display='none';
+        document.getElementById('btn-pest').classList.remove('alert-btn');
+        updateFarmAR();
+      }
+    }
+  }, 1000);
+}
+
+function clearPenaltyTimer(type) {
+  const key = type === 'pest' ? 'pestPenaltyInt' : 'heatPenaltyInt';
+  if (G[key]) { clearInterval(G[key]); G[key]=null; }
+  // 다른 타이머가 없을 때만 바 숨김
+  if (!G.pestPenaltyInt && !G.heatPenaltyInt)
+    document.getElementById('penalty-bar').style.display='none';
+}
+
 function showEvt(icon,title,desc,good,btn){
   document.getElementById('evt-icon').textContent=icon;
   document.getElementById('evt-title').textContent=title;
@@ -983,6 +1055,7 @@ function dismissEvt(){ document.getElementById('evt-popup').classList.remove('sh
 function endGame(){
   G.running=false;
   clearInterval(G.timerInt); clearInterval(G.growInt); clearInterval(G.evtInt);
+  clearPenaltyTimer('pest'); clearPenaltyTimer('heat');
   if(xrSession) xrSession.end();
   if(simRaf) cancelAnimationFrame(simRaf);
   const avg=G.growth.reduce((a,b)=>a+b,0)/3;
