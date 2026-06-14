@@ -482,8 +482,8 @@ async function initAR() {
     xrSession.addEventListener('end', ()=>{ xrSession=null; arCanvas.style.display='none'; });
     xrSession.requestAnimationFrame(onXRFrame);
 
-    // Tap to place
-    document.getElementById('tap-overlay').addEventListener('click', ()=>{
+    // Tap to place – WebXR AR uses XR select events, not DOM click
+    xrSession.addEventListener('select', ()=>{
       if (!farmPlaced) placeFarm();
     });
 
