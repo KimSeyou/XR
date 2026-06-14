@@ -288,6 +288,8 @@
   <div class="ar-corner tl"></div><div class="ar-corner tr"></div>
   <div class="ar-corner bl"></div><div class="ar-corner br"></div>
 
+  <div id="tap-overlay" style="position:absolute;inset:0;z-index:1;pointer-events:all;"></div>
+
   <div id="scan-hint">
     <div class="scan-ring-outer">
       <div class="scan-ring-inner"></div>
@@ -481,7 +483,7 @@ async function initAR() {
     xrSession.requestAnimationFrame(onXRFrame);
 
     // Tap to place
-    document.getElementById('ar-canvas').addEventListener('click', ()=>{
+    document.getElementById('tap-overlay').addEventListener('click', ()=>{
       if (!farmPlaced) placeFarm();
     });
 
@@ -557,6 +559,7 @@ function placeFarm() {
   }
   farmPlaced = true;
   dbg('d-place','배치 완료 ✓','ok');
+  document.getElementById('tap-overlay').style.pointerEvents = 'none';
   document.getElementById('scan-hint').classList.add('hidden');
   document.getElementById('hud-top').classList.add('visible');
   document.getElementById('ai-panel').classList.add('visible');
