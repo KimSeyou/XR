@@ -246,6 +246,8 @@
   .res-btn { width:100%; max-width:280px; background:linear-gradient(135deg,#2d7a4f,#4caf78); color:#fff; border:none; border-radius:12px; padding:.88rem; font-size:.98rem; font-weight:700; cursor:pointer; font-family:inherit; margin-bottom:.55rem; }
   .res-btn2 { width:100%; max-width:280px; background:transparent; color:#888; border:1px solid #333; border-radius:12px; padding:.72rem; font-size:.88rem; cursor:pointer; font-family:inherit; }
 
+  @keyframes pulse-harvest { 0%,100%{transform:scale(1);box-shadow:0 0 20px rgba(255,215,0,.5)} 50%{transform:scale(1.06);box-shadow:0 0 32px rgba(255,215,0,.9)} }
+
   /* Water FX */
   .drop-fx { position:fixed; pointer-events:none; font-size:1.3rem; z-index:30; animation:drop-fall .9s ease-in forwards; }
   @keyframes drop-fall { 0%{transform:translateY(0);opacity:1} 100%{transform:translateY(80px);opacity:0} }
@@ -348,6 +350,14 @@
     <div class="env-row"><span>☀️</span><span class="env-num" id="e-light">ON</span><div class="env-bw"><div class="env-bf ef-l" id="ef-light" style="width:75%"></div></div></div>
   </div>
 
+  <!-- Harvest prompt -->
+  <div id="harvest-prompt" style="position:absolute;bottom:210px;left:50%;transform:translateX(-50%);display:none;pointer-events:all;z-index:12;text-align:center;">
+    <button onclick="doHarvest()" style="background:linear-gradient(135deg,#ffd700,#ff9800);border:none;border-radius:14px;padding:.7rem 1.6rem;font-size:1rem;font-weight:700;color:#000;cursor:pointer;font-family:inherit;box-shadow:0 0 20px rgba(255,215,0,.5);animation:pulse-harvest .8s ease-in-out infinite;">
+      🌾 수확하기!
+    </button>
+    <div style="font-size:.7rem;color:#ffd700;margin-top:.3rem;" id="harvest-bonus-txt"></div>
+  </div>
+
   <div id="controls">
     <div class="ctrl-row">
       <div class="ctrl-btn on" id="btn-water" onclick="doWater()">
@@ -414,6 +424,7 @@
     <tr><td>🌱 평균 성장률</td><td id="r-gr">0%</td></tr>
     <tr><td>💧 물 주기 횟수</td><td id="r-wt">0회</td></tr>
     <tr><td>🐛 병충해 처리율</td><td id="r-pt">0%</td></tr>
+    <tr><td>🌾 수확 횟수</td><td id="r-hv">0회</td></tr>
     <tr><td>⭐ 성과 보너스</td><td id="r-bn">+0</td></tr>
   </table>
   <button class="res-btn" onclick="location.reload()">🔄 다시 플레이</button>
@@ -436,7 +447,7 @@ let cropSelectReady = false;
 let G = {
   crop:'tomato', score:0, timeLeft:120,
   growth:[0,0,0], lightOn:true, temp:22, humi:60,
-  waterCnt:0, pestCnt:0, pestTotal:0, hasPest:false,
+  waterCnt:0, pestCnt:0, pestTotal:0, hasPest:false, harvestCnt:0,
   running:false,
   timerInt:null, growInt:null, evtInt:null,
 };
@@ -825,6 +836,28 @@ function growTick() {
   for(let i=0;i<3;i++) G.growth[i]=Math.min(100,G.growth[i]+rate+(Math.random()-.5));
   if(tOk&&hOk&&!G.hasPest) G.score+=Math.round(rate*6);
   updateHUD(); updateAiTip(tOk,hOk); updateFarmAR();
+  // 작물이 모두 다 자라면 수확 버튼 표시
+  if (G.growth.every(g => g >= 100)) showHarvestPrompt();
+}
+
+function showHarvestPrompt() {
+  const prompt = document.getElementById('harvest-prompt');
+  if (prompt.style.display === 'block') return; // 이미 표시 중
+  const bonus = 300 + G.harvestCnt * 150;
+  document.getElementById('harvest-bonus-txt').textContent = `+${bonus}점 보너스`;
+  prompt.style.display = 'block';
+  aiSay('🌾 작물이 다 자랐어요! 수확하고 다시 심으세요!');
+}
+
+function doHarvest() {
+  G.harvestCnt++;
+  const bonus = 300 + (G.harvestCnt - 1) * 150; // 수확할수록 보너스 증가
+  G.score += bonus;
+  G.growth = [0, 0, 0];
+  document.getElementById('harvest-prompt').style.display = 'none';
+  updateHUD(); updateFarmAR();
+  showEvt('🌾', `${G.harvestCnt}번째 수확!`, `+${bonus}점! 다시 작물을 키워보세요.`, true, '다시 심기');
+  aiSay(`🌱 ${G.harvestCnt}번 수확 완료! 새로 시작하세요.`);
 }
 
 function updateFarmAR() {
@@ -964,6 +997,7 @@ function endGame(){
   document.getElementById('r-gr').textContent=Math.round(avg)+'%';
   document.getElementById('r-wt').textContent=G.waterCnt+'회';
   document.getElementById('r-pt').textContent=pr+'%';
+  document.getElementById('r-hv').textContent=G.harvestCnt+'회';
   document.getElementById('r-bn').textContent='+'+bonus;
   document.getElementById('result').classList.add('show');
 }
