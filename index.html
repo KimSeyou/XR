@@ -290,6 +290,18 @@
 
   <div id="tap-overlay" style="position:absolute;inset:0;z-index:1;pointer-events:all;"></div>
 
+  <!-- Crop selection (shown after farm placement) -->
+  <div id="crop-select" style="position:absolute;inset:0;z-index:16;display:none;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,.6);pointer-events:all;">
+    <div style="background:rgba(10,26,15,.95);border:1px solid rgba(0,255,136,.3);border-radius:18px;padding:1.4rem 1.8rem;text-align:center;max-width:280px;">
+      <div style="font-size:1rem;font-weight:700;color:#4caf78;margin-bottom:1.2rem;">🌱 키울 작물을 선택하세요</div>
+      <div style="display:flex;gap:.7rem;justify-content:center;">
+        <button onclick="selectCrop('tomato')" style="flex:1;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.2);border-radius:12px;padding:.8rem .4rem;color:#fff;font-size:1.4rem;cursor:pointer;font-family:inherit;line-height:1.4;">🍅<br><span style="font-size:.72rem;color:#aaa;">토마토</span></button>
+        <button onclick="selectCrop('lettuce')" style="flex:1;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.2);border-radius:12px;padding:.8rem .4rem;color:#fff;font-size:1.4rem;cursor:pointer;font-family:inherit;line-height:1.4;">🥬<br><span style="font-size:.72rem;color:#aaa;">상추</span></button>
+        <button onclick="selectCrop('strawberry')" style="flex:1;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.2);border-radius:12px;padding:.8rem .4rem;color:#fff;font-size:1.4rem;cursor:pointer;font-family:inherit;line-height:1.4;">🍓<br><span style="font-size:.72rem;color:#aaa;">딸기</span></button>
+      </div>
+    </div>
+  </div>
+
   <div id="scan-hint">
     <div class="scan-ring-outer">
       <div class="scan-ring-inner"></div>
@@ -565,6 +577,12 @@ function placeFarm() {
   document.getElementById('ai-panel').classList.add('visible');
   document.getElementById('env-panel').classList.add('visible');
   document.getElementById('controls').classList.add('visible');
+  document.getElementById('crop-select').style.display = 'flex';
+}
+
+function selectCrop(key) {
+  G.crop = key;
+  document.getElementById('crop-select').style.display = 'none';
   startGameLoop();
 }
 
@@ -574,10 +592,10 @@ function placeFarm() {
 function ensureFarmCanvas() {
   if (farmCanvas) return;
   farmCanvas = document.createElement('canvas');
-  farmCanvas.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:5;';
+  farmCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2;';
   farmCanvas.width  = window.innerWidth  * devicePixelRatio;
   farmCanvas.height = window.innerHeight * devicePixelRatio;
-  document.body.appendChild(farmCanvas);
+  document.getElementById('ar-ui').appendChild(farmCanvas);
   farmCtx = farmCanvas.getContext('2d');
 }
 
@@ -720,7 +738,7 @@ async function startSimCamera() {
       document.getElementById('ai-panel').classList.add('visible');
       document.getElementById('env-panel').classList.add('visible');
       document.getElementById('controls').classList.add('visible');
-      startGameLoop();
+      document.getElementById('crop-select').style.display = 'flex';
     }
   });
 
