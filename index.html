@@ -453,7 +453,7 @@ let G = {
   crop:'tomato', score:0, timeLeft:120,
   growth:[0,0,0], lightOn:true, temp:22, humi:60,
   waterCnt:0, pestCnt:0, pestTotal:0, hasPest:false, harvestCnt:0,
-  running:false,
+  running:false, gameOver:false,
   timerInt:null, growInt:null, evtInt:null,
   pestPenaltyInt:null, heatPenaltyInt:null,
 };
@@ -1012,8 +1012,10 @@ function startPenaltyCountdown(type, seconds, penalty) {
 
     if (cd <= 0) {
       clearInterval(G[key]); G[key]=null; bar.style.display='none';
+      const prevScore = G.score;
       G.score = Math.max(0, G.score - penalty);
       updateHUD();
+      if (prevScore < penalty) { G.gameOver = true; endGame(); return; }
       const msg = type === 'pest'
         ? `병충해 피해! 작물이 손상됐어요. -${penalty}점`
         : `폭염 피해! 작물이 타버렸어요. -${penalty}점`;
@@ -1064,8 +1066,15 @@ function endGame(){
   G.score+=bonus;
   const si=avg<20?0:avg<50?1:avg<80?2:3;
   const c=CROPS[G.crop];
-  document.getElementById('r-emoji').textContent=c.em[si];
-  document.getElementById('r-stars').textContent=avg>=80?'★★★':avg>=50?'★★☆':'★☆☆';
+  if(G.gameOver){
+    document.getElementById('r-emoji').textContent='💀';
+    document.getElementById('r-stars').textContent='☆☆☆';
+    document.querySelector('.res-title').textContent='💀 게임 오버';
+  } else {
+    document.getElementById('r-emoji').textContent=c.em[si];
+    document.getElementById('r-stars').textContent=avg>=80?'★★★':avg>=50?'★★☆':'★☆☆';
+    document.querySelector('.res-title').textContent='🎉 수확 완료!';
+  }
   document.getElementById('r-num').textContent=G.score.toLocaleString();
   document.getElementById('r-gr').textContent=Math.round(avg)+'%';
   document.getElementById('r-wt').textContent=G.waterCnt+'회';
